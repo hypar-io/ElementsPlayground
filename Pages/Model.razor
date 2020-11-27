@@ -1,0 +1,68 @@
+@page "/model"
+
+@inject IJSRuntime JSRuntime
+
+<h1>Model</h1>
+
+<button class="btn btn-primary" @onclick="CreateBeams">Create Beams</button>
+
+@if (model == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Guid</th>
+                <th>Length</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var beam in model.AllElementsOfType<Beam>())
+            {
+                <tr>
+                    <td>@beam.Id</td>
+                    <td>@beam.Curve.Length()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<div id="model" style="width: 300px; height: 300px;"></div>
+
+@code {
+    private Elements.Model model;
+    private bool isFirstLoad = true;
+
+    private int increment = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Run(() =>
+        {
+            CreateBeams();
+        });
+    }
+
+    private void CreateBeams()
+    {
+        model = new Elements.Model();
+        for (var i = 0; i < 100; i++)
+        {
+            var beam = new Beam(new Line(Vector3.Origin, new Vector3(i, increment, 5)), Polygon.Rectangle(0.1, 0.1));
+            model.AddElement(beam);
+        }
+        increment++;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isFirstLoad)
+        {
+            await JSRuntime.InvokeVoidAsync("model.loadScene");
+            isFirstLoad = false;
+        }
+    }
+}
