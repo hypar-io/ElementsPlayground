@@ -4,7 +4,7 @@
 
 <h1>Model</h1>
 
-<button class="btn btn-primary" @onclick="CreateBeams">Create Beams</button>
+<button class="btn btn-primary" @onclick="CreateModel">Create Model</button>
 
 @if (model == null)
 {
@@ -30,7 +30,7 @@ else
         </tbody>
     </table>
 }
-<div id="model" style="width: 300px; height: 300px;"></div>
+<div id="model" style="width: 100%; height: 500px;"></div>
 
 @code {
     private Elements.Model model;
@@ -40,29 +40,30 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.Run(() =>
-        {
-            CreateBeams();
-        });
+        await CreateModel();
     }
 
-    private void CreateBeams()
+    private async Task CreateModel()
     {
         model = new Elements.Model();
-        for (var i = 0; i < 100; i++)
+        for (var i = 0; i < 5; i++)
         {
-            var beam = new Beam(new Line(Vector3.Origin, new Vector3(i, increment, 5)), Polygon.Rectangle(0.1, 0.1));
+            var beam = new Beam(new Line(new Vector3(i, 0, 0), new Vector3(i, 5 + increment, 5)), Polygon.Rectangle(0.1, 0.1));
             model.AddElement(beam);
         }
         increment++;
+
+        var glb = model.ToBase64String(false);
+        await JSRuntime.InvokeVoidAsync("model.loadModel", new[] { glb });
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (isFirstLoad)
         {
-            await JSRuntime.InvokeVoidAsync("model.loadScene");
             isFirstLoad = false;
+            await JSRuntime.InvokeVoidAsync("model.loadScene");
+
         }
     }
 }

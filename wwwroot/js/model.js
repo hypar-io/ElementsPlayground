@@ -1,36 +1,82 @@
 import * as THREE from 'https://unpkg.com/three@0.123.0/build/three.module.js'
+import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders/GLTFLoader.js';
 
 window.model = {
     loadScene: () => { loadScene(); },
+    loadModel: (glb) => { loadModel(glb) }
 };
 
-function loadScene() {
+const scene = new THREE.Scene();
 
-    console.debug("Loading scene")
-    const scene = new THREE.Scene();
+function loadModel(glb) {
+    const blob = b64toBlob(glb, "application/octet-stream");
+    const blobUrl = URL.createObjectURL(blob);
+
+    const loader = new GLTFLoader();
+
+    loader.load(
+        blobUrl,
+        function (gltf) {
+            scene.add(gltf.scene);
+            URL.revokeObjectURL(blobUrl);
+        },
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        function (error) {
+            console.log('An error happened');
+            console.log(error)
+        }
+    );
+}
+
+function loadScene() {
     const div = document.getElementById("model");
     const camera = new THREE.PerspectiveCamera(75, div.clientWidth / div.clientHeight, 0.1, 1000);
 
-    const renderer = new THREE.WebGLRenderer();
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
 
     renderer.setSize(div.clientWidth, div.clientHeight);
     div.appendChild(renderer.domElement);
 
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    scene.add(directionalLight);
+
+    const ambient = new THREE.AmbientLight(0x404040); // soft white light
+    scene.add(ambient);
 
     camera.position.z = 5;
 
+    controls.update();
+
     const animate = function () {
         requestAnimationFrame(animate);
-
-        cube.rotation.x += 0.01;
-        cube.rotation.y += 0.01;
-
+        controls.update();
         renderer.render(scene, camera);
     };
 
     animate();
+}
+
+function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+        const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+        }
+
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+    }
+
+    const blob = new Blob(byteArrays, { type: contentType });
+    return blob;
 }
