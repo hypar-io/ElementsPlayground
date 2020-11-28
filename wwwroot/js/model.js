@@ -3,11 +3,12 @@ import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/cont
 import { GLTFLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders/GLTFLoader.js';
 
 window.model = {
-    loadScene: () => { loadScene(); },
-    loadModel: (glb) => { loadModel(glb) }
+    initialize: () => { initialize(); },
+    loadModel: (glb) => { loadModel(glb) },
 };
 
 const scene = new THREE.Scene();
+var gltfScene = null;
 
 function loadModel(glb) {
     const blob = b64toBlob(glb, "application/octet-stream");
@@ -18,7 +19,14 @@ function loadModel(glb) {
     loader.load(
         blobUrl,
         function (gltf) {
+
+            if (gltfScene != null) {
+                scene.remove(gltfScene);
+            }
+
             scene.add(gltf.scene);
+            gltfScene = gltf.scene;
+
             URL.revokeObjectURL(blobUrl);
         },
         function (xhr) {
@@ -31,7 +39,7 @@ function loadModel(glb) {
     );
 }
 
-function loadScene() {
+function initialize() {
     const div = document.getElementById("model");
     const camera = new THREE.PerspectiveCamera(75, div.clientWidth / div.clientHeight, 0.1, 1000);
 

@@ -4,57 +4,75 @@
 
 <h1>Model</h1>
 
-<button class="btn btn-primary" @onclick="CreateModel">Create Model</button>
+<input type="range" min="-9" max="9" step="1" class="column slider" @bind-value="@value" @bind-value:event="oninput"
+    @onchange="OnChange" />
+<p>@value</p>
 
 @if (model == null)
 {
     <p><em>Loading...</em></p>
 }
-else
-{
+@* else
+    {
     <table class="table">
-        <thead>
-            <tr>
-                <th>Guid</th>
-                <th>Length</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var beam in model.AllElementsOfType<Beam>())
-            {
-                <tr>
-                    <td>@beam.Id</td>
-                    <td>@beam.Curve.Length()</td>
-                </tr>
-            }
-        </tbody>
+    <thead>
+    <tr>
+    <th>Guid</th>
+    <th>Length</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var beam in model.AllElementsOfType<Beam>())
+    {
+    <tr>
+    <td>@beam.Id</td>
+    <td>@beam.Curve.Length()</td>
+    </tr>
+    }
+    </tbody>
     </table>
-}
+    } *@
 <div id="model" style="width: 100%; height: 500px;"></div>
 
 @code {
     private Elements.Model model;
     private bool isFirstLoad = true;
-
-    private int increment = 0;
+    private double value = 0;
 
     protected override async Task OnInitializedAsync()
     {
-        await CreateModel();
+        await UpdateModel();
     }
 
-    private async Task CreateModel()
+    private async Task UpdateModel()
     {
-        model = new Elements.Model();
-        for (var i = 0; i < 5; i++)
-        {
-            var beam = new Beam(new Line(new Vector3(i, 0, 0), new Vector3(i, 5 + increment, 5)), Polygon.Rectangle(0.1, 0.1));
-            model.AddElement(beam);
-        }
-        increment++;
 
+        var stopwatch = new Stopwatch();
+        stopwatch.Start();
+
+        model = new Elements.Model();
+        for (var i = 0; i < 20; i++)
+        {
+            var line = new Line(new Vector3(i, 0, value), new Vector3(i, 5, value));
+            @* var beam = new Beam(line, Polygon.Rectangle(0.1, 0.1)); *@
+            var modelCurve = new ModelCurve(line);
+            model.AddElement(modelCurve);
+        }
+        stopwatch.Stop();
+        Console.WriteLine($"Elements created in {stopwatch.Elapsed.TotalMilliseconds}ms.");
+        stopwatch.Reset();
+
+        stopwatch.Start();
         var glb = model.ToBase64String(false);
+        stopwatch.Stop();
+        Console.WriteLine($"Model blob generated in {stopwatch.Elapsed.TotalMilliseconds}ms.");
+
         await JSRuntime.InvokeVoidAsync("model.loadModel", new[] { glb });
+    }
+
+    private async Task OnChange()
+    {
+        await UpdateModel();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -62,8 +80,7 @@ else
         if (isFirstLoad)
         {
             isFirstLoad = false;
-            await JSRuntime.InvokeVoidAsync("model.loadScene");
-
+            await JSRuntime.InvokeVoidAsync("model.initialize");
         }
     }
 }
