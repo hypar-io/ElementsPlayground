@@ -1,6 +1,7 @@
 @page "/model"
 
 @inject IJSRuntime JSRuntime
+@inject IJSUnmarshalledRuntime JSUnmarshalledRuntime
 
 <h1>Model</h1>
 
@@ -12,26 +13,7 @@
 {
     <p><em>Loading...</em></p>
 }
-@* else
-    {
-    <table class="table">
-    <thead>
-    <tr>
-    <th>Guid</th>
-    <th>Length</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var beam in model.AllElementsOfType<Beam>())
-    {
-    <tr>
-    <td>@beam.Id</td>
-    <td>@beam.Curve.Length()</td>
-    </tr>
-    }
-    </tbody>
-    </table>
-    } *@
+
 <div id="model" style="width: 100%; height: 500px;"></div>
 
 @code {
@@ -46,28 +28,40 @@
 
     private async Task UpdateModel()
     {
-
         var stopwatch = new Stopwatch();
-        stopwatch.Start();
 
         model = new Elements.Model();
+        model.AddElement(BuiltInMaterials.Steel);
+
+        var beamProfile = new Profile(Polygon.Rectangle(0.1, 0.1));
+
+        stopwatch.Start();
+
+        var beams = new List<ElementInstance>();
+        var line = new Line(new Vector3(0, 0, 0), new Vector3(0, 5, 0));
+        var beam = new Beam(line, beamProfile, isElementDefinition: true);
+        model.AddElement(beam);
+        
         for (var i = 0; i < 20; i++)
         {
-            var line = new Line(new Vector3(i, 0, value), new Vector3(i, 5, value));
-            @* var beam = new Beam(line, Polygon.Rectangle(0.1, 0.1)); *@
-            var modelCurve = new ModelCurve(line);
-            model.AddElement(modelCurve);
+            var instance = beam.CreateInstance(new Transform(i, 0, value), $"beam_{i}");
+            beams.Add(instance);
         }
+        model.AddElements(beams, false);
+
         stopwatch.Stop();
         Console.WriteLine($"Elements created in {stopwatch.Elapsed.TotalMilliseconds}ms.");
         stopwatch.Reset();
 
-        stopwatch.Start();
-        var glb = model.ToBase64String(false);
-        stopwatch.Stop();
-        Console.WriteLine($"Model blob generated in {stopwatch.Elapsed.TotalMilliseconds}ms.");
-
-        await JSRuntime.InvokeVoidAsync("model.loadModel", new[] { glb });
+        // Send the byte array of glb data unmarshalled to the loadModel function.
+        await Task.Run(() => {
+            stopwatch.Start();
+            var glb = model.ToGlTF();
+            JSUnmarshalledRuntime.InvokeUnmarshalled<byte[], bool>("model.loadModel", glb);
+            stopwatch.Stop();
+            Console.WriteLine($"Elements written to stream in {stopwatch.Elapsed.TotalMilliseconds}ms.");
+            stopwatch.Reset();
+        });
     }
 
     private async Task OnChange()

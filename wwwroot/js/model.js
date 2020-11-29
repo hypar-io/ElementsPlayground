@@ -11,7 +11,8 @@ const scene = new THREE.Scene();
 var gltfScene = null;
 
 function loadModel(glb) {
-    const blob = b64toBlob(glb, "application/octet-stream");
+    const contentArray = Blazor.platform.toUint8Array(glb);
+    const blob = new Blob([new Uint8Array(contentArray)], {type: "application/octet-stream"});
     const blobUrl = URL.createObjectURL(blob);
 
     const loader = new GLTFLoader();
@@ -28,6 +29,8 @@ function loadModel(glb) {
             gltfScene = gltf.scene;
 
             URL.revokeObjectURL(blobUrl);
+
+            return true;
         },
         function (xhr) {
             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
