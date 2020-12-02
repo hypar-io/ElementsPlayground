@@ -47,12 +47,17 @@ function loadModel(glb) {
 function initializeEditor() {
     ace.config.set("packaged", true)
     ace.config.set("basePath", "https://pagecdn.io/lib/ace/1.4.12/")
+    ace.require("ace/ext/language_tools");
     editor = ace.edit("editor");
     editor.setTheme("ace/theme/tomorrow");
     editor.session.setMode("ace/mode/csharp");
     editor.setOptions({
-        fontSize: "10pt"
+        fontSize: "10pt",
+        enableBasicAutocompletion: true,
+        enableSnippets: true,
+        enableLiveAutocompletion: true
     });
+
     editor.getSession().on('change', function () {
         var code = editor.getValue();
         DotNet.invokeMethod('ElementsWasm', 'SetCodeValue', code)
