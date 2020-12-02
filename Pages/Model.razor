@@ -28,11 +28,11 @@ var p = WideFlangeProfileServer.Instance.GetProfileByType(WideFlangeProfileType.
 
 for(var i=0; i<10; i++)
 {
-    var start = new Vector3(i, 0, 0);
-    var end = new Vector3(i,5,i);
-    var line = new Line(start, end);
-    var beam = new Beam(line, p, m);
-    model.AddElement(beam);
+var start = new Vector3(i, 0, 0);
+var end = new Vector3(i,5,i);
+var line = new Line(start, end);
+var beam = new Beam(line, p, m);
+model.AddElement(beam);
 }
 return model;";
     private string output = "";
@@ -93,7 +93,7 @@ return model;";
                 });
 
                 var evalOutput = HttpUtility.HtmlEncode(writer.ToString());
-                if (!string.IsNullOrWhiteSpace(evalOutput)) 
+                if (!string.IsNullOrWhiteSpace(evalOutput))
                 {
                     output += $"{evalOutput}";
                 }
@@ -118,7 +118,7 @@ return model;";
     }
 
     private bool TryCompile(string source, out CSharpCompilation compilation, out Assembly assembly, out
-        IEnumerable<Diagnostic> errorDiagnostics)
+        List<Diagnostic> errorDiagnostics)
     {
         assembly = null;
         compilation = null;
@@ -139,7 +139,8 @@ return model;";
             "Elements.Geometry.Profiles"
         }));
 
-        errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error);
+        // TODO: https://github.com/dotnet/runtime/issues/43411
+        errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error).ToList();
         if (errorDiagnostics.Any())
         {
             return false;
