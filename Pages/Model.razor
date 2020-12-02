@@ -28,11 +28,11 @@ var p = WideFlangeProfileServer.Instance.GetProfileByType(WideFlangeProfileType.
 
 for(var i=0; i<10; i++)
 {
-var start = new Vector3(i, 0, 0);
-var end = new Vector3(i,5,i);
-var line = new Line(start, end);
-var beam = new Beam(line, p, m);
-model.AddElement(beam);
+    var start = new Vector3(i, 0, 0);
+    var end = new Vector3(i,5,i);
+    var line = new Line(start, end);
+    var beam = new Beam(line, p, m);
+    model.AddElement(beam);
 }
 return model;";
     private string output = "";
@@ -126,18 +126,18 @@ return model;";
         var scriptCompilation = CSharpCompilation.CreateScriptCompilation(
             Path.GetRandomFileName(),
             CSharpSyntaxTree.ParseText(source,
-            CSharpParseOptions.Default.WithKind(SourceCodeKind.Script).WithLanguageVersion(LanguageVersion.Preview)),
+                CSharpParseOptions.Default.WithKind(SourceCodeKind.Script).WithLanguageVersion(LanguageVersion.Preview)),
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, usings: new[]
-        {
-            "System",
-            "System.Collections.Generic",
-            "System.Console",
-            "System.Linq",
-            "Elements",
-            "Elements.Geometry",
-            "Elements.Geometry.Profiles"
-        }));
+            {
+                "System",
+                "System.Collections.Generic",
+                "System.Console",
+                "System.Linq",
+                "Elements",
+                "Elements.Geometry",
+                "Elements.Geometry.Profiles"
+            }));
 
         // TODO: https://github.com/dotnet/runtime/issues/43411
         errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error).ToList();
