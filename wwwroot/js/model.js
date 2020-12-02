@@ -50,6 +50,9 @@ function initializeEditor() {
     editor = ace.edit("editor");
     editor.setTheme("ace/theme/tomorrow");
     editor.session.setMode("ace/mode/csharp");
+    editor.setOptions({
+        fontSize: "10pt"
+    });
     editor.getSession().on('change', function () {
         var code = editor.getValue();
         DotNet.invokeMethod('ElementsWasm', 'SetCodeValue', code)
@@ -70,10 +73,17 @@ function initialize3D() {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     scene.add(directionalLight);
 
-    const ambient = new THREE.AmbientLight(0x404040); // soft white light
-    scene.add(ambient);
+    const size = 100;
+    const divisions = 20;
+
+    const gridHelper = new THREE.GridHelper(size, divisions, "darkgray", "lightgray");
+    scene.add(gridHelper);
+
+    const light = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
+    scene.add(light);
 
     camera.position.z = 5;
+    camera.position.y = 10;
 
     controls.update();
 
@@ -83,25 +93,11 @@ function initialize3D() {
         renderer.render(scene, camera);
     };
 
+    window.addEventListener('resize', () => {
+        camera.aspect = div.clientWidth / div.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(div.clientWidth, div.clientHeight);
+    }, false);
+
     animate();
-}
-
-function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
-    const byteCharacters = atob(b64Data);
-    const byteArrays = [];
-
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        const slice = byteCharacters.slice(offset, offset + sliceSize);
-
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-    }
-
-    const blob = new Blob(byteArrays, { type: contentType });
-    return blob;
 }

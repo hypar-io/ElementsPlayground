@@ -1,31 +1,41 @@
-@page "/model"
+@page "/"
+
 @using Microsoft.CodeAnalysis
 @using Microsoft.CodeAnalysis.CSharp
 @using Microsoft.CodeAnalysis.CSharp.Scripting.Hosting
 @using System.Reflection
 @using System.IO
 @using System.Threading
+@using System.Web
 
 @inject IJSRuntime JSRuntime
 @inject IJSUnmarshalledRuntime JSUnmarshalledRuntime
 @inject NavigationManager MyNavigationManager
 
-<h1>Model</h1>
 
-<button class="btn btn-primary" @onclick="EvaluateAsync">Run</button>
-
-<div id="editor">@csharp</div>
-
-<div id="model"></div>
+<div class=grid>
+    <button class="run btn btn-primary" @onclick="EvaluateAsync">Run</button>
+    <div id="editor">@csharp</div>
+    <div id="model"></div>
+    <div class="output">@((MarkupString)output)</div>
+</div>
 
 @code {
     private bool isFirstLoad = true;
     private static string csharp = @"var model = new Model();
 var m = BuiltInMaterials.Concrete;
-var mass = new Mass(Polygon.Rectangle(5,5), 5, m);
-model.AddElement(mass);
-return model;";
+var p = WideFlangeProfileServer.Instance.GetProfileByType(WideFlangeProfileType.W10x100);
 
+for(var i=0; i<10; i++)
+{
+    var start = new Vector3(i, 0, 0);
+    var end = new Vector3(i,5,5);
+    var line = new Line(start, end);
+    var beam = new Beam(line, p, m);
+    model.AddElement(beam);
+}
+return model;";
+    private string output = "";
     private List<MetadataReference> references;
 
     protected override async Task OnInitializedAsync()
@@ -60,13 +70,14 @@ return model;";
 
     private async Task EvaluateAsync(string code)
     {
+        output = "";
         var previousOut = Console.Out;
         try
         {
             if (TryCompile(code, out var compilation, out var script, out var errorDiagnostics))
             {
                 var writer = new StringWriter();
-                @* Console.SetOut(writer); *@
+                Console.SetOut(writer);
 
                 var entryPoint = compilation.GetEntryPoint(CancellationToken.None);
                 var type = script.GetType($"{entryPoint.ContainingNamespace.MetadataName}.{entryPoint.ContainingType.MetadataName}");
@@ -75,24 +86,23 @@ return model;";
                 var submission = (Func<object[], Task>)entryPointMethod.CreateDelegate(typeof(Func<object[], Task>));
                 var returnValue = await ((Task<object>)submission(new object[] { null, null }));
 
-                if (returnValue != null)
-                {
-                    Console.WriteLine(CSharpObjectFormatter.Instance.FormatObject(returnValue));
-                }
-
-                Console.WriteLine(returnValue.GetType().Name);
-
                 await Task.Run(() =>
                 {
                     var glb = ((Elements.Model)returnValue).ToGlTF();
                     JSUnmarshalledRuntime.InvokeUnmarshalled<byte[], bool>("model.loadModel", glb);
                 });
+
+                var evalOutput = HttpUtility.HtmlEncode(writer.ToString());
+                if (!string.IsNullOrWhiteSpace(evalOutput)) 
+                {
+                    output += $"{evalOutput}";
+                }
             }
             else
             {
                 foreach (var diag in errorDiagnostics)
                 {
-                    Console.WriteLine(diag);
+                    output += $@"<span class=""error"">{HttpUtility.HtmlEncode(diag)}</span>";
                 }
             }
         }
@@ -103,9 +113,10 @@ return model;";
         }
         finally
         {
-            @* Console.SetOut(previousOut); *@
+            Console.SetOut(previousOut);
         }
     }
+
     private bool TryCompile(string source, out CSharpCompilation compilation, out Assembly assembly, out
         IEnumerable<Diagnostic> errorDiagnostics)
     {
@@ -122,8 +133,10 @@ return model;";
             "System",
             "System.Collections.Generic",
             "System.Console",
+            "System.Linq",
             "Elements",
-            "Elements.Geometry"
+            "Elements.Geometry",
+            "Elements.Geometry.Profiles"
         }));
 
         errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error);
