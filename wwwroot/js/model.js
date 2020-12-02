@@ -3,16 +3,18 @@ import { OrbitControls } from 'https://unpkg.com/three@0.123.0/examples/jsm/cont
 import { GLTFLoader } from 'https://unpkg.com/three@0.123.0/examples/jsm/loaders/GLTFLoader.js';
 
 window.model = {
-    initialize: () => { initialize(); },
+    initialize3D: () => { initialize3D(); },
+    initializeEditor: () => { initializeEditor(); },
     loadModel: (glb) => { loadModel(glb) },
 };
 
 const scene = new THREE.Scene();
 var gltfScene = null;
+var editor = null;
 
 function loadModel(glb) {
     const contentArray = Blazor.platform.toUint8Array(glb);
-    const blob = new Blob([new Uint8Array(contentArray)], {type: "application/octet-stream"});
+    const blob = new Blob([new Uint8Array(contentArray)], { type: "application/octet-stream" });
     const blobUrl = URL.createObjectURL(blob);
 
     const loader = new GLTFLoader();
@@ -42,7 +44,19 @@ function loadModel(glb) {
     );
 }
 
-function initialize() {
+function initializeEditor() {
+    ace.config.set("packaged", true)
+    ace.config.set("basePath", "https://pagecdn.io/lib/ace/1.4.12/")
+    editor = ace.edit("editor");
+    editor.setTheme("ace/theme/tomorrow");
+    editor.session.setMode("ace/mode/csharp");
+    editor.getSession().on('change', function () {
+        var code = editor.getValue();
+        DotNet.invokeMethod('ElementsWasm', 'SetCodeValue', code)
+    });
+}
+
+function initialize3D() {
     const div = document.getElementById("model");
     const camera = new THREE.PerspectiveCamera(75, div.clientWidth / div.clientHeight, 0.1, 1000);
 
