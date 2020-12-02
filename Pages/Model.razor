@@ -29,7 +29,7 @@ var p = WideFlangeProfileServer.Instance.GetProfileByType(WideFlangeProfileType.
 for(var i=0; i<10; i++)
 {
     var start = new Vector3(i, 0, 0);
-    var end = new Vector3(i,5,5);
+    var end = new Vector3(i,5,i);
     var line = new Line(start, end);
     var beam = new Beam(line, p, m);
     model.AddElement(beam);
