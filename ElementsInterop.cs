@@ -1,10 +1,6 @@
-using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Elements;
 using Elements.Geometry;
-using Elements.Geometry.Interfaces;
-using Elements.Serialization.glTF;
 using Elements.Spatial;
 using Microsoft.JSInterop;
 
