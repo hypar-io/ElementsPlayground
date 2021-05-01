@@ -16,7 +16,10 @@ namespace ElementsWasm
             var v = new Grid1d();
             v.DivideByCount(vCount);
             var g = new Grid2d(u, v);
-            // We need to send out serializable stuff.
+
+            // Everything will be serialized using System.Text.Json. We don't
+            // have access to our custom serialization. So for now, we need
+            // to return simple types.
             return Task.FromResult(g.GetCellSeparators(GridDirection.U).Concat(g.GetCellSeparators(GridDirection.V)).Cast<Line>().ToArray());
         }
     }
