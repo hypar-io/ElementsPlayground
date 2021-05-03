@@ -15,4 +15,8 @@
     <ProjectReference Include="..\Hypar\Elements\Elements\src\Elements.csproj" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <BlazorEnableCompression>false</BlazorEnableCompression>
+  </PropertyGroup>
+
 </Project>
