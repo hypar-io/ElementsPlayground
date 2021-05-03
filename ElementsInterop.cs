@@ -9,18 +9,29 @@ namespace ElementsWasm
     public static class ElementsInterop
     {
         [JSInvokable]
-        public static Task<Line[]> CreateGrid2dAsync(int uCount, int vCount)
+        public static Task<Line[]> CreateGrid2dAsync(Polygon polygon)
         {
-            var u = new Grid1d();
-            u.DivideByCount(uCount);
-            var v = new Grid1d();
-            v.DivideByCount(vCount);
-            var g = new Grid2d(u, v);
+            var g = new Grid2d(polygon);
+            g.U.DivideByCount(5);
+            g.V.DivideByCount(5);
 
             // Everything will be serialized using System.Text.Json. We don't
             // have access to our custom serialization. So for now, we need
             // to return simple types.
             return Task.FromResult(g.GetCellSeparators(GridDirection.U).Concat(g.GetCellSeparators(GridDirection.V)).Cast<Line>().ToArray());
+        }
+
+        [JSInvokable]
+        public static Line[] CreateGrid2d(Polygon polygon)
+        {
+            var g = new Grid2d(polygon);
+            g.U.DivideByCount(5);
+            g.V.DivideByCount(5);
+
+            // Everything will be serialized using System.Text.Json. We don't
+            // have access to our custom serialization. So for now, we need
+            // to return simple types.
+            return g.GetCellSeparators(GridDirection.U).Concat(g.GetCellSeparators(GridDirection.V)).Cast<Line>().ToArray();
         }
     }
 }
