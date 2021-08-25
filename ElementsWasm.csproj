@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hypar\Elements\Elements\src\Elements.csproj" />
+    <ProjectReference Include="..\Elements\Elements\src\Elements.csproj" />
   </ItemGroup>
 
 </Project>
