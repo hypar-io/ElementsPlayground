@@ -16,8 +16,14 @@ namespace ElementsWasm
         [JSInvokable]
         public static Task<Byte[]> ModelToBytes(string modelJson)
         {
+            Console.WriteLine("starting modelJson");
+            Console.WriteLine(DateTime.Now.ToString());
             var model = Model.FromJson(modelJson);
+            Console.WriteLine("done with model from Json");
+            Console.WriteLine(DateTime.Now.ToString());
             var glb = model.ToGlTF();
+            Console.WriteLine("done with model to gltf");
+            Console.WriteLine(DateTime.Now.ToString());
             return Task.FromResult<Byte[]>(glb);
         }
 
