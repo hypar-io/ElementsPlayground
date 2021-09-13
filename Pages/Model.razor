@@ -24,8 +24,8 @@
     private bool isFirstLoad = true;
     private static string csharp = @"var model = new Model();
 var m = BuiltInMaterials.Concrete;
-var p = WideFlangeProfileServer.Instance.GetProfileByType(WideFlangeProfileType.W10x100);
-
+var wf = new WideFlangeProfileFactory();
+var p = wf.GetProfileByType(WideFlangeProfileType.W10x100);
 for(var i=0; i<10; i++)
 {
     var start = new Vector3(i, 0, 0);
@@ -78,10 +78,12 @@ return model;";
             {
                 var writer = new StringWriter();
                 Console.SetOut(writer);
-
+                
                 var entryPoint = compilation.GetEntryPoint(CancellationToken.None);
                 var type = script.GetType($"{entryPoint.ContainingNamespace.MetadataName}.{entryPoint.ContainingType.MetadataName}");
                 var entryPointMethod = type.GetMethod(entryPoint.MetadataName);
+
+                Console.WriteLine("Compilation was successful.");
 
                 var submission = (Func<object[], Task>)entryPointMethod.CreateDelegate(typeof(Func<object[], Task>));
                 var returnValue = await ((Task<object>)submission(new object[] { null, null }));
@@ -95,11 +97,12 @@ return model;";
                 var evalOutput = HttpUtility.HtmlEncode(writer.ToString());
                 if (!string.IsNullOrWhiteSpace(evalOutput))
                 {
-                    output += $"{evalOutput}";
+                    output += $"\n{evalOutput}";
                 }
             }
             else
             {
+                Console.WriteLine("Compilation failed.");
                 foreach (var diag in errorDiagnostics)
                 {
                     output += $@"<span class=""error"">{HttpUtility.HtmlEncode(diag)}</span>";
@@ -108,8 +111,9 @@ return model;";
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
-            Console.WriteLine(ex.StackTrace);
+            output += $"{ex.Message}\n";
+            output += $@"{ex.StackTrace}\n";
+            output += $@"{ex.InnerException}\n";
         }
         finally
         {
@@ -123,6 +127,8 @@ return model;";
         assembly = null;
         compilation = null;
 
+        // Use ConcurrentBuild to avoid the issue in
+        // TODO: https://github.com/dotnet/runtime/issues/43411
         var scriptCompilation = CSharpCompilation.CreateScriptCompilation(
             Path.GetRandomFileName(),
             CSharpSyntaxTree.ParseText(source,
@@ -137,9 +143,9 @@ return model;";
                 "Elements",
                 "Elements.Geometry",
                 "Elements.Geometry.Profiles"
-            }));
+            }, concurrentBuild: false));
 
-        // TODO: https://github.com/dotnet/runtime/issues/43411
+        
         errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error).ToList();
         if (errorDiagnostics.Any())
         {
