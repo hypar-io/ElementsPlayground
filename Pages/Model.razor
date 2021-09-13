@@ -14,7 +14,8 @@
 
 
 <div class=grid>
-    <button class="run btn btn-primary" @onclick="EvaluateAsync">Run</button>
+    <button class="run btn btn-primary" @onclick="EvaluateAsync">Compile</button>
+    <input type="range" min="1.0" max="100.0" value="@FirstParamValue" @onchange="RunAsync"/>
     <div id="editor">@csharp</div>
     <div id="model"></div>
     <div class="output">@((MarkupString)output)</div>
@@ -23,13 +24,17 @@
 @code {
     private bool isFirstLoad = true;
     private static string csharp = @"var model = new Model();
+
+public double length;
+
+Validator.DisableValidationOnConstruction = true;
 var m = BuiltInMaterials.Concrete;
 var wf = new WideFlangeProfileFactory();
 var p = wf.GetProfileByType(WideFlangeProfileType.W10x100);
 for(var i=0; i<10; i++)
 {
     var start = new Vector3(i, 0, 0);
-    var end = new Vector3(i,5,i);
+    var end = new Vector3(i, Length, i);
     var line = new Line(start, end);
     var beam = new Beam(line, p, m);
     model.AddElement(beam);
@@ -37,6 +42,9 @@ for(var i=0; i<10; i++)
 return model;";
     private string output = "";
     private List<MetadataReference> references;
+    private Func<object[], Task> submission;
+
+    public double FirstParamValue { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -63,12 +71,24 @@ return model;";
         references = listRefs;
     }
 
-    private async Task EvaluateAsync(MouseEventArgs args)
+    private void EvaluateAsync(MouseEventArgs args)
     {
-        await EvaluateAsync(csharp);
+        EvaluateAsync(csharp);
     }
 
-    private async Task EvaluateAsync(string code)
+    private async Task RunAsync(ChangeEventArgs args)
+    {
+        this.FirstParamValue = double.Parse(args.Value.ToString());
+
+        var model = await (Task<object>)submission(new object[] { new ScriptGlobals(double.Parse(args.Value.ToString())), null });
+        await Task.Run(() =>
+        {
+            var glb = ((Elements.Model)model).ToGlTF();
+            JSUnmarshalledRuntime.InvokeUnmarshalled<byte[], bool>("model.loadModel", glb);
+        });
+    }
+
+    private void EvaluateAsync(string code)
     {
         output = "";
         var previousOut = Console.Out;
@@ -78,21 +98,14 @@ return model;";
             {
                 var writer = new StringWriter();
                 Console.SetOut(writer);
-                
+
                 var entryPoint = compilation.GetEntryPoint(CancellationToken.None);
                 var type = script.GetType($"{entryPoint.ContainingNamespace.MetadataName}.{entryPoint.ContainingType.MetadataName}");
                 var entryPointMethod = type.GetMethod(entryPoint.MetadataName);
 
                 Console.WriteLine("Compilation was successful.");
 
-                var submission = (Func<object[], Task>)entryPointMethod.CreateDelegate(typeof(Func<object[], Task>));
-                var returnValue = await ((Task<object>)submission(new object[] { null, null }));
-
-                await Task.Run(() =>
-                {
-                    var glb = ((Elements.Model)returnValue).ToGlTF();
-                    JSUnmarshalledRuntime.InvokeUnmarshalled<byte[], bool>("model.loadModel", glb);
-                });
+                submission = (Func<object[], Task>)entryPointMethod.CreateDelegate(typeof(Func<object[], Task>));
 
                 var evalOutput = HttpUtility.HtmlEncode(writer.ToString());
                 if (!string.IsNullOrWhiteSpace(evalOutput))
@@ -136,16 +149,16 @@ return model;";
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, usings: new[]
             {
-                "System",
-                "System.Collections.Generic",
-                "System.Console",
-                "System.Linq",
-                "Elements",
-                "Elements.Geometry",
-                "Elements.Geometry.Profiles"
-            }, concurrentBuild: false));
+            "System",
+            "System.Collections.Generic",
+            "System.Console",
+            "System.Linq",
+            "Elements",
+            "Elements.Geometry",
+            "Elements.Geometry.Profiles",
+            "Elements.Validators"
+            }, concurrentBuild: false), globalsType: typeof(ScriptGlobals));
 
-        
         errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error).ToList();
         if (errorDiagnostics.Any())
         {
@@ -181,5 +194,18 @@ return model;";
     public static void SetCodeValue(string code)
     {
         csharp = code;
+    }
+
+    /// <summary>
+    /// A class containing the global values to
+    /// be passed to the executing script.
+    /// </summary>
+    public class ScriptGlobals
+    {
+        public double Length = 10;
+        public ScriptGlobals(double length)
+        {
+            this.Length = length;
+        }
     }
 }
