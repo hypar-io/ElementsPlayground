@@ -15,7 +15,7 @@
 
 <div class=grid>
     <button class="run btn btn-primary" @onclick="EvaluateAsync">Compile</button>
-    <input type="range" min="1.0" max="100.0" value="@FirstParamValue" @onchange="RunAsync"/>
+    <input type="range" min="1.0" max="100.0" value="@FirstParamValue" @onchange="RunAsync" />
     <div id="editor">@csharp</div>
     <div id="model"></div>
     <div class="output">@((MarkupString)output)</div>
@@ -31,13 +31,37 @@ Validator.DisableValidationOnConstruction = true;
 var m = BuiltInMaterials.Concrete;
 var wf = new WideFlangeProfileFactory();
 var p = wf.GetProfileByType(WideFlangeProfileType.W10x100);
-for(var i=0; i<10; i++)
+for(var i=0; i<1; i++)
 {
-    var start = new Vector3(i, 0, 0);
-    var end = new Vector3(i, Length, i);
-    var line = new Line(start, end);
-    var beam = new Beam(line, p, m);
-    model.AddElement(beam);
+var start = new Vector3(i, 0, 0);
+var end = new Vector3(i, Length, i);
+
+// The bottom chord
+var bottomChord = new Line(start, end);
+var bottomChordBeam = new Beam(bottomChord, p, m);
+model.AddElement(bottomChordBeam);
+
+var topChord = new Line(start + new Vector3(0,0,5), end + new Vector3(0,0,5));
+var topChordBeam = new Beam(topChord, p, m);
+model.AddElement(topChordBeam);
+
+Vector3 last = default(Vector3);
+for(var j=0.0; j<=1.0; j+=0.1)
+{
+var pt = bottomChord.PointAt(j);
+var top = pt + new Vector3(0,0,5);
+var panelLine = new Line(pt, top);
+var panelBeam = new Beam(panelLine, p, m);
+model.AddElement(panelBeam);
+
+if(j > 0.0)
+{
+var braceLine = new Line(top, last);
+var braceBeam = new Beam(braceLine, p, m);
+model.AddElement(braceBeam);
+}
+last = pt;
+}
 }
 return model;";
     private string output = "";
@@ -80,7 +104,8 @@ return model;";
     {
         this.FirstParamValue = double.Parse(args.Value.ToString());
 
-        var model = await (Task<object>)submission(new object[] { new ScriptGlobals(double.Parse(args.Value.ToString())), null });
+        var model = await (Task<object>)submission(new object[] { new ScriptGlobals(double.Parse(args.Value.ToString())), null
+});
         await Task.Run(() =>
         {
             var glb = ((Elements.Model)model).ToGlTF();
@@ -135,7 +160,7 @@ return model;";
     }
 
     private bool TryCompile(string source, out CSharpCompilation compilation, out Assembly assembly, out
-        List<Diagnostic> errorDiagnostics)
+    List<Diagnostic> errorDiagnostics)
     {
         assembly = null;
         compilation = null;
@@ -143,21 +168,21 @@ return model;";
         // Use ConcurrentBuild to avoid the issue in
         // TODO: https://github.com/dotnet/runtime/issues/43411
         var scriptCompilation = CSharpCompilation.CreateScriptCompilation(
-            Path.GetRandomFileName(),
-            CSharpSyntaxTree.ParseText(source,
-                CSharpParseOptions.Default.WithKind(SourceCodeKind.Script).WithLanguageVersion(LanguageVersion.Preview)),
-            references,
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, usings: new[]
-            {
-            "System",
-            "System.Collections.Generic",
-            "System.Console",
-            "System.Linq",
-            "Elements",
-            "Elements.Geometry",
-            "Elements.Geometry.Profiles",
-            "Elements.Validators"
-            }, concurrentBuild: false), globalsType: typeof(ScriptGlobals));
+        Path.GetRandomFileName(),
+        CSharpSyntaxTree.ParseText(source,
+        CSharpParseOptions.Default.WithKind(SourceCodeKind.Script).WithLanguageVersion(LanguageVersion.Preview)),
+        references,
+        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, usings: new[]
+        {
+"System",
+"System.Collections.Generic",
+"System.Console",
+"System.Linq",
+"Elements",
+"Elements.Geometry",
+"Elements.Geometry.Profiles",
+"Elements.Validators"
+        }, concurrentBuild: false), globalsType: typeof(ScriptGlobals));
 
         errorDiagnostics = scriptCompilation.GetDiagnostics().Where(x => x.Severity == DiagnosticSeverity.Error).ToList();
         if (errorDiagnostics.Any())
